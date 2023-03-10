@@ -16,8 +16,7 @@
     "poststart:dev": "docker-compose down",
     "lint": "eslint . --ext .ts",
     "prettier": "prettier --config .prettierrc 'src/**/*.ts' --write",
-    "prepare": "husky install",
-    "docs": "npx typedoc"
+    "prepare": "husky install"
   },
   "repository": {
     "type": "git",
@@ -63,8 +62,6 @@
     "supertest": "^6.3.3",
     "ts-jest": "^29.0.5",
     "ts-node": "^10.9.1",
-    "tsc-watch": "^6.0.0",
-    "typedoc": "^0.23.26",
-    "typedoc-plugin-markdown": "^3.14.0"
+    "tsc-watch": "^6.0.0"
   }
 }

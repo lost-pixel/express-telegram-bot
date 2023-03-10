@@ -2,7 +2,6 @@ import express, { NextFunction, Request, Response } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import { config } from "../config";
-import { userRouter } from "./user/user.route";
 
 const app = express();
 
@@ -22,8 +21,6 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
 app.get("/ping", (_req: Request, res: Response) => {
   res.send("pong");
 });
-
-app.use(userRouter);
 
 if (!config.isTestEnvironment) {
   app.listen(config.port);
