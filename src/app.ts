@@ -59,10 +59,6 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-app.get("/ping", (_req: Request, res: Response) => {
-  res.send("xx");
-});
-
 bot.start((ctx) => {
   ctx.reply(
     "Welcome to the Ed GPT! I'm a bot that can create textual content based on your input. To get started, send me a message with the text you want me to generate content for."
