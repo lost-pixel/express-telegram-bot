@@ -11,17 +11,25 @@ import { modes } from "./config/modes";
 import { Postgres } from "@telegraf/session/pg";
 import { SessionStore } from "telegraf/typings/session";
 
-const store = Postgres({
-  host: "localhost",
-  user: "postgres",
-  password: "postgres"
-}) as SessionStore<object>;
-
 const envSchema = z.object({
   TELEGRAM_TOKEN: z.string().nonempty(),
   OPEN_AI_PLATFORM_TOKEN: z.string().nonempty(),
-  NO_OAI_TOKEN_MESSAGE_LIMIT: z.string().nonempty()
+  NO_OAI_TOKEN_MESSAGE_LIMIT: z.string().nonempty(),
+  PG_HOST: z.string().nonempty(),
+  PG_USER: z.string().nonempty(),
+  PG_PASSWORD: z.string().nonempty(),
+  PG_PORT: z.number().nonnegative(),
+  PG_DB: z.string().nonempty()
 });
+const env = envSchema.parse(process.env);
+
+const store = Postgres({
+  host: env.PG_HOST,
+  user: env.PG_USER,
+  password: env.PG_PASSWORD,
+  port: env.PG_PORT,
+  database: env.PG_DB
+}) as SessionStore<object>;
 
 const COMPLETION_PARAMS = {
   frequency_penalty: 0,
@@ -46,8 +54,6 @@ interface MyContext extends Context {
 }
 
 const selectedMode = "ASSISTANT";
-
-const env = envSchema.parse(process.env);
 
 const bot = new Telegraf<MyContext>(env.TELEGRAM_TOKEN);
 
