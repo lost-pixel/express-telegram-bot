@@ -16,7 +16,10 @@
     "poststart:dev": "docker-compose down",
     "lint": "eslint . --ext .ts",
     "prettier": "prettier --config .prettierrc 'src/**/*.ts' --write",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "build": "npx tsc",
+    "start": "node dist/src/app.js",
+    "dev": "concurrently \"npx tsc --watch\" \"nodemon -q dist/src/app.js\""
   },
   "repository": {
     "type": "git",
@@ -32,13 +35,17 @@
   "dependencies": {
     "@prisma/client": "^4.11.0",
     "@types/helmet": "^4.0.0",
+    "concurrently": "^7.6.0",
     "cors": "^2.8.5",
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
     "helmet": "^6.0.1",
+    "openai": "^3.2.1",
     "prisma": "^4.11.0",
     "shapely": "^0.2.3",
-    "typescript": "^4.9.5"
+    "telegraf": "^4.12.2",
+    "typescript": "^4.9.5",
+    "zod": "^3.21.4"
   },
   "devDependencies": {
     "@commitlint/cli": "^17.4.4",
