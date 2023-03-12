@@ -11,6 +11,7 @@ COPY package.json pnpm-lock.yaml ./
 
 # Install pnpm
 RUN npm install -g pnpm
+RUN npm install -g tsc
 
 # Install dependencies
 
