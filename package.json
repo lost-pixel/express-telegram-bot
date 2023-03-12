@@ -17,7 +17,7 @@
     "lint": "eslint . --ext .ts",
     "prettier": "prettier --config .prettierrc 'src/**/*.ts' --write",
     "prepare": "husky install",
-    "build": "npx tsc",
+    "build": "npm tsc",
     "start": "node dist/src/app.js",
     "dev": "concurrently \"npx tsc --watch\" \"nodemon -q dist/src/app.js\""
   },
@@ -74,6 +74,7 @@
     "supertest": "^6.3.3",
     "ts-jest": "^29.0.5",
     "ts-node": "^10.9.1",
+    "tsc": "^2.0.4",
     "tsc-watch": "^6.0.0"
   }
 }

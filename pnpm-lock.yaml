@@ -38,6 +38,7 @@ specifiers:
   telegraf: ^4.12.2
   ts-jest: ^29.0.5
   ts-node: ^10.9.1
+  tsc: ^2.0.4
   tsc-watch: ^6.0.0
   typescript: ^4.9.5
   zod: ^3.21.4
@@ -84,6 +85,7 @@ devDependencies:
   supertest: 6.3.3
   ts-jest: 29.0.5_7latyidodje3t47qvjmeshd2uy
   ts-node: 10.9.1_gnm7lcgvmriq6wnyes65lttfdy
+  tsc: 2.0.4
   tsc-watch: 6.0.0_typescript@4.9.5
 
 packages:
@@ -6065,6 +6067,11 @@ packages:
       ps-tree: 1.2.0
       string-argv: 0.3.1
       typescript: 4.9.5
+    dev: true
+
+  /tsc/2.0.4:
+    resolution: {integrity: sha512-fzoSieZI5KKJVBYGvwbVZs/J5za84f2lSTLPYf6AGiIf43tZ3GNrI1QzTLcjtyDDP4aLxd46RTZq1nQxe7+k5Q==}
+    hasBin: true
     dev: true
 
   /tslib/1.14.1:
