@@ -12,12 +12,13 @@ COPY package.json pnpm-lock.yaml ./
 # Install pnpm
 RUN npm install -g pnpm
 
-# Build app
-RUN pnpm build
-
 # Install dependencies
 
 RUN pnpm install
+
+# Build app
+RUN pnpm build
+
 
 # Copy the rest of the app
 COPY . .
