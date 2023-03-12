@@ -8,6 +8,15 @@ import { config } from "../config";
 
 import { modes } from "./config/modes";
 
+import { Postgres } from "@telegraf/session/pg";
+import { SessionStore } from "telegraf/typings/session";
+
+const store = Postgres({
+  host: "localhost",
+  user: "postgres",
+  password: "postgres"
+}) as SessionStore<object>;
+
 const envSchema = z.object({
   TELEGRAM_TOKEN: z.string().nonempty(),
   OPEN_AI_PLATFORM_TOKEN: z.string().nonempty(),
@@ -66,7 +75,7 @@ bot.start((ctx) => {
   );
 });
 
-bot.use(session());
+bot.use(session({ store }));
 
 bot.command("clear", (ctx) => {
   if (ctx.session) {
@@ -165,7 +174,7 @@ bot.on("text", async (ctx) => {
         | "MarkdownV2"
     });
 
-    console.log(ctx.session);
+    console.log("Session", ctx.session);
   } catch (error) {
     console.log(error);
   }
