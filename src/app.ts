@@ -10,7 +10,8 @@ import { modes } from "./config/modes";
 
 const envSchema = z.object({
   TELEGRAM_TOKEN: z.string().nonempty(),
-  OPEN_AI_TOKEN: z.string().nonempty()
+  OPEN_AI_PLATFORM_TOKEN: z.string().nonempty(),
+  NO_OAI_TOKEN_MESSAGE_LIMIT: z.string().nonempty()
 });
 
 const COMPLETION_PARAMS = {
@@ -23,6 +24,8 @@ const COMPLETION_PARAMS = {
 
 interface SessionData {
   mode?: string;
+  token?: string;
+  messagesCount: number;
   chatHistory?: {
     role: "system" | "user" | "assistant";
     content: string;
@@ -37,11 +40,6 @@ const selectedMode = "ASSISTANT";
 
 const env = envSchema.parse(process.env);
 
-const configuration = new Configuration({
-  apiKey: env.OPEN_AI_TOKEN
-});
-
-const openai = new OpenAIApi(configuration);
 const bot = new Telegraf<MyContext>(env.TELEGRAM_TOKEN);
 
 const app = express();
@@ -61,7 +59,10 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
 
 bot.start((ctx) => {
   ctx.reply(
-    "Welcome to the Ed GPT! I'm a bot that can create textual content based on your input. To get started, send me a message with the text you want me to generate content for."
+    `Hey, I'm <b>Ed GPT</b>! I'm a bot that can create textual content based on your input based on ChatGPT model. To get started, send me a message with the text you want me to generate content for. You can try it out for <b>${env.NO_OAI_TOKEN_MESSAGE_LIMIT}</b>  messages without an <b>OpenAI API token</b>.\n\nAfter that, you'll need to provide a token to continue using the bot.\n\nYou can easily get a token for free at https://platform.openai.com/account/api-keys`,
+    {
+      parse_mode: "HTML"
+    }
   );
 });
 
@@ -84,43 +85,90 @@ bot.command("clear", (ctx) => {
   }
 });
 
+bot.command("token", (ctx) => {
+  try {
+    const tokenFromArg = ctx.message.text.split(" ")[1];
+
+    const tokenSchema = z.string().nonempty().min(5);
+
+    const token = tokenSchema.parse(tokenFromArg);
+
+    if (ctx.session) {
+      ctx.session.token = token;
+    }
+
+    ctx.reply(
+      `Your token has been set. You can now use the bot without any limitations. Unlock premium feature of Ed GPT.`
+    );
+  } catch (error) {
+    ctx.reply(
+      `Please provide a valid token. You can easily get a token for free at https://platform.openai.com/account/api-keys`
+    );
+    return;
+  }
+});
+
 bot.on("text", async (ctx) => {
   if (!ctx.session) {
     ctx.session = {
-      mode: selectedMode
+      mode: selectedMode,
+      messagesCount: 0
     };
   }
 
-  ctx.sendChatAction("typing");
-
-  if (!ctx.session.chatHistory) {
-    ctx.session.chatHistory = [
-      {
-        role: "system",
-        content: modes.find((m) => m.code === selectedMode)
-          ?.promptStart as string
-      },
-      { role: "user", content: ctx.message.text }
-    ];
-  } else {
-    ctx.session.chatHistory.push({ role: "user", content: ctx.message.text });
+  if (ctx.session.messagesCount >= Number(env.NO_OAI_TOKEN_MESSAGE_LIMIT)) {
+    if (!ctx.session.token) {
+      ctx.reply(
+        `You have reached the limit of ${env.NO_OAI_TOKEN_MESSAGE_LIMIT} messages without an OpenAI API token. You can easily get a token for free at https://platform.openai.com/account/api-keys`
+      );
+      return;
+    }
   }
 
-  const completion = await openai.createChatCompletion({
-    model: "gpt-3.5-turbo",
-    messages: ctx.session.chatHistory,
-    ...COMPLETION_PARAMS
-  });
+  try {
+    const configuration = new Configuration({
+      apiKey: ctx.session.token ?? env.OPEN_AI_PLATFORM_TOKEN
+    });
 
-  if (completion.data.choices[0].message) {
-    ctx.session.chatHistory?.push(completion.data.choices[0].message);
+    const openai = new OpenAIApi(configuration);
+
+    ctx.sendChatAction("typing");
+
+    if (!ctx.session.chatHistory) {
+      ctx.session.chatHistory = [
+        {
+          role: "system",
+          content: modes.find((m) => m.code === selectedMode)
+            ?.promptStart as string
+        },
+        { role: "user", content: ctx.message.text }
+      ];
+    } else {
+      ctx.session.chatHistory.push({ role: "user", content: ctx.message.text });
+    }
+
+    const completion = await openai.createChatCompletion({
+      model: "gpt-3.5-turbo",
+      messages: ctx.session.chatHistory,
+      ...COMPLETION_PARAMS
+    });
+
+    ctx.session.messagesCount = ctx.session.messagesCount + 1;
+
+    if (completion.data.choices[0].message) {
+      ctx.session.chatHistory?.push(completion.data.choices[0].message);
+    }
+
+    ctx.reply(completion.data.choices[0].message?.content as string, {
+      parse_mode: modes.find((m) => m.code === selectedMode)?.parseMode as
+        | "HTML"
+        | "MarkdownV2"
+    });
+
+    console.log(ctx.session);
+  } catch (error) {
+    console.log(error);
   }
-
-  ctx.reply(completion.data.choices[0].message?.content as string, {
-    parse_mode: modes.find((m) => m.code === selectedMode)?.parseMode as
-      | "HTML"
-      | "MarkdownV2"
-  });
 });
 
 bot.launch();
