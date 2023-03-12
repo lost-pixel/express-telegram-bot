@@ -18,7 +18,7 @@ RUN npm install -g tsc
 RUN pnpm install
 
 # Build app
-RUN pnpm build
+RUN tsc
 
 
 # Copy the rest of the app
