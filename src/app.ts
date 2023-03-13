@@ -28,8 +28,21 @@ const store = Postgres({
   user: env.PG_USER,
   password: env.PG_PASSWORD,
   port: Number(env.PG_PORT),
-  database: env.PG_DB
+  database: env.PG_DB,
+  config: {
+    ssl: {
+      rejectUnauthorized: false
+    }
+  }
 }) as SessionStore<object>;
+
+console.log({
+  host: env.PG_HOST,
+  user: env.PG_USER,
+  password: env.PG_PASSWORD,
+  port: Number(env.PG_PORT),
+  database: env.PG_DB
+});
 
 const COMPLETION_PARAMS = {
   frequency_penalty: 0,
