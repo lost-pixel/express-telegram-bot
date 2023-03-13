@@ -18,7 +18,7 @@ const envSchema = z.object({
   PG_HOST: z.string().nonempty(),
   PG_USER: z.string().nonempty(),
   PG_PASSWORD: z.string().nonempty(),
-  PG_PORT: z.number().nonnegative(),
+  PG_PORT: z.string().nonempty(),
   PG_DB: z.string().nonempty()
 });
 const env = envSchema.parse(process.env);
@@ -27,7 +27,7 @@ const store = Postgres({
   host: env.PG_HOST,
   user: env.PG_USER,
   password: env.PG_PASSWORD,
-  port: env.PG_PORT,
+  port: Number(env.PG_PORT),
   database: env.PG_DB
 }) as SessionStore<object>;
 
