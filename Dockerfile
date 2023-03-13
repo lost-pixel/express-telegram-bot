@@ -11,14 +11,14 @@ COPY package.json pnpm-lock.yaml ./
 
 # Install pnpm
 RUN npm install -g pnpm
-RUN npm install -g tsc
+RUN npm install -g typescript
 
 # Install dependencies
 
 RUN pnpm install
 
 # Build app
-RUN tsc
+RUN npm run build
 
 
 # Copy the rest of the app

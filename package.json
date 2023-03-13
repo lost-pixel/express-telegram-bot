@@ -18,8 +18,7 @@
     "prettier": "prettier --config .prettierrc 'src/**/*.ts' --write",
     "prepare": "husky install",
     "build": "tsc",
-    "start": "node dist/src/app.js",
-    "dev": "concurrently \"npx tsc --watch\" \"nodemon -q dist/src/app.js\""
+    "start": "node dist/src/app.js"
   },
   "repository": {
     "type": "git",
