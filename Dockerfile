@@ -17,12 +17,11 @@ RUN npm install -g typescript
 
 RUN pnpm install
 
-# Build app
-RUN npm run build
-
-
 # Copy the rest of the app
 COPY . .
+
+# Build app
+RUN npm run build
 
 # Expose the port
 EXPOSE 3000
