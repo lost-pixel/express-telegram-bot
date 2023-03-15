@@ -1,7 +1,7 @@
 import express, { NextFunction, Request, Response } from "express";
 import cors from "cors";
 import helmet from "helmet";
-import { Telegraf, session, Context } from "telegraf";
+import { Telegraf, session, Context, Markup } from "telegraf";
 import { OpenAIApi, Configuration } from "openai";
 import { z } from "zod";
 import { config } from "../config";
@@ -10,6 +10,7 @@ import { modes } from "./config/modes";
 
 import { Postgres } from "@telegraf/session/pg";
 import { SessionStore } from "telegraf/typings/session";
+import { InlineKeyboardButton } from "telegraf/typings/core/types/typegram";
 
 const envSchema = z.object({
   TELEGRAM_TOKEN: z.string().nonempty(),
@@ -29,20 +30,15 @@ const store = Postgres({
   password: env.PG_PASSWORD,
   port: Number(env.PG_PORT),
   database: env.PG_DB,
-  config: {
-    ssl: {
-      rejectUnauthorized: false
-    }
-  }
+  config:
+    process.env.NODE_ENV === "production"
+      ? {
+          ssl: {
+            rejectUnauthorized: true
+          }
+        }
+      : undefined
 }) as SessionStore<object>;
-
-console.log({
-  host: env.PG_HOST,
-  user: env.PG_USER,
-  password: env.PG_PASSWORD,
-  port: Number(env.PG_PORT),
-  database: env.PG_DB
-});
 
 const COMPLETION_PARAMS = {
   frequency_penalty: 0,
@@ -136,6 +132,86 @@ bot.command("token", (ctx) => {
   }
 });
 
+bot.command("mode", (ctx) => {
+  const modeButtons = modes.map((mode) => {
+    // split into arrays of two
+    return Markup.button.callback(
+      `${ctx.session?.mode === mode.code ? `✅  ` : ""}${mode.name}`,
+      `mode-switch-event__${mode.code}`
+    );
+  });
+
+  const modeButtonsChunks = modeButtons.reduce(
+    (resultArray, item, index) => {
+      const chunkIndex = Math.floor(index / 2);
+
+      if (!resultArray[chunkIndex]) {
+        resultArray[chunkIndex] = []; // start a new chunk
+      }
+
+      resultArray[chunkIndex].push(item);
+
+      return resultArray;
+    },
+    [] as InlineKeyboardButton.CallbackButton[][] // start with the empty array
+  );
+
+  return ctx.reply("Choose your AI assistant!", {
+    parse_mode: "HTML",
+    ...Markup.inlineKeyboard(modeButtonsChunks)
+  });
+});
+
+const regexp = /mode-switch-event__(.*)/;
+
+bot.action(regexp, (ctx) => {
+  ctx.telegram.editMessageReplyMarkup(
+    ctx.update?.callback_query?.message?.chat.id,
+    ctx.update?.callback_query?.message?.message_id,
+    undefined,
+    {
+      //edit initial array, remove tick from previously selected mode add tick to newly selected mode
+
+      inline_keyboard: [
+        // @ts-expect-error I know better what exists here
+        ...(ctx.update?.callback_query?.message?.reply_markup?.inline_keyboard?.map(
+          (row: InlineKeyboardButton.CallbackButton[]) => {
+            return row.map((button) => {
+              console.log(button);
+              // @ts-expect-error I know better what exists here
+              if (button.callback_data === ctx.update?.callback_query?.data) {
+                return {
+                  ...button,
+                  text: `✅  ${button.text}`
+                };
+              } else {
+                return {
+                  ...button,
+                  text: button.text.replace("✅  ", "")
+                };
+              }
+            });
+          }
+        ) ?? [])
+      ]
+    }
+  );
+
+  if (ctx.session) {
+    ctx.session.mode = ctx.match[1];
+  } else {
+    ctx.session = {
+      mode: ctx.match[1],
+      messagesCount: 0
+    };
+  }
+  ctx.reply(
+    `You are now chatting with ${
+      modes.find((mode) => mode.code === ctx.match[1])?.name
+    }`
+  );
+});
+
 bot.on("text", async (ctx) => {
   if (!ctx.session) {
     ctx.session = {
@@ -160,7 +236,7 @@ bot.on("text", async (ctx) => {
 
     const openai = new OpenAIApi(configuration);
 
-    ctx.sendChatAction("typing");
+    await ctx.sendChatAction("typing");
 
     if (!ctx.session.chatHistory) {
       ctx.session.chatHistory = [
