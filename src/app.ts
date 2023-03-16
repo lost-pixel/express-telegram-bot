@@ -11,6 +11,11 @@ import { modes } from "./config/modes";
 import { Postgres } from "@telegraf/session/pg";
 import { SessionStore } from "telegraf/typings/session";
 import { InlineKeyboardButton } from "telegraf/typings/core/types/typegram";
+import path from "path";
+import os from "os";
+import fs from "fs";
+import https from "https";
+import ffmpeg from "fluent-ffmpeg";
 
 const envSchema = z.object({
   TELEGRAM_TOKEN: z.string().nonempty(),
@@ -212,6 +217,140 @@ bot.action(regexp, (ctx) => {
   );
 });
 
+bot.on("voice", async (ctx) => {
+  return ctx.telegram
+    .getFileLink(ctx.message.voice.file_id)
+    .then((url) => {
+      console.log("--- url: " + url);
+      // create a temp file path
+      const tempFilePath = path.join(
+        os.tmpdir(),
+        `${ctx.message.voice.file_id}.ogg`
+      );
+      // download the file
+
+      const file = fs.createWriteStream(tempFilePath);
+
+      https
+        .get(url, function (response) {
+          response.pipe(file);
+          file.on("finish", function () {
+            console.log(`File downloaded to ${tempFilePath}`);
+            // use fluent-ffmpeg to convert .ogg file to .mp3 format
+
+            try {
+              ffmpeg(tempFilePath)
+                .toFormat("mp3")
+
+                .on("start", function (commandLine) {
+                  console.log("Spawned Ffmpeg with command: " + commandLine);
+                })
+                .on("error", function (err) {
+                  console.log(
+                    "An error occurred while converting with mmpeg: " +
+                      err.message
+                  );
+                })
+                .on("end", async function () {
+                  console.log("Processing finished !");
+
+                  const configuration = new Configuration({
+                    apiKey: ctx?.session?.token ?? env.OPEN_AI_PLATFORM_TOKEN
+                  });
+
+                  const openai = new OpenAIApi(configuration);
+
+                  const transcript = await openai.createTranscription(
+                    fs.createReadStream(
+                      path.join(os.tmpdir(), `${ctx.message.voice.file_id}.mp3`)
+                    ) as any,
+                    "whisper-1"
+                  );
+
+                  ctx.reply(`You asked: \n${transcript.data.text}`);
+
+                  if (!ctx.session) {
+                    ctx.session = {
+                      mode: selectedMode,
+                      messagesCount: 0
+                    };
+                  }
+
+                  if (
+                    ctx.session.messagesCount >=
+                    Number(env.NO_OAI_TOKEN_MESSAGE_LIMIT)
+                  ) {
+                    if (!ctx.session.token) {
+                      ctx.reply(
+                        `You have reached the limit of ${env.NO_OAI_TOKEN_MESSAGE_LIMIT} messages without an OpenAI API token. You can easily get a token for free at https://platform.openai.com/account/api-keys`
+                      );
+                      return;
+                    }
+                  }
+
+                  try {
+                    await ctx.sendChatAction("typing");
+
+                    if (!ctx.session.chatHistory) {
+                      ctx.session.chatHistory = [
+                        {
+                          role: "system",
+                          content: modes.find((m) => m.code === selectedMode)
+                            ?.promptStart as string
+                        },
+                        { role: "user", content: transcript.data.text }
+                      ];
+                    } else {
+                      ctx.session.chatHistory.push({
+                        role: "user",
+                        content: transcript.data.text
+                      });
+                    }
+
+                    const completion = await openai.createChatCompletion({
+                      model: "gpt-3.5-turbo",
+                      messages: ctx.session.chatHistory,
+                      ...COMPLETION_PARAMS
+                    });
+
+                    ctx.session.messagesCount = ctx.session.messagesCount + 1;
+
+                    if (completion.data.choices[0].message) {
+                      ctx.session.chatHistory?.push(
+                        completion.data.choices[0].message
+                      );
+                    }
+
+                    ctx.reply(
+                      completion.data.choices[0].message?.content as string,
+                      {
+                        parse_mode: modes.find((m) => m.code === selectedMode)
+                          ?.parseMode as "HTML" | "MarkdownV2"
+                      }
+                    );
+                  } catch (error) {
+                    console.log(error);
+                  }
+                })
+                .output(
+                  path.join(os.tmpdir(), `${ctx.message.voice.file_id}.mp3`)
+                )
+                .run();
+            } catch (error) {
+              console.log(error);
+            }
+          });
+        })
+        .on("error", function (err) {
+          console.error(`Error downloading file: ${err.message}`);
+        });
+    })
+    .catch((err) => {
+      console.log("*** error ***");
+      console.log(err);
+    });
+});
+
 bot.on("text", async (ctx) => {
   if (!ctx.session) {
     ctx.session = {
@@ -268,8 +407,6 @@ bot.on("text", async (ctx) => {
         | "HTML"
         | "MarkdownV2"
     });
-
-    console.log("Session", ctx.session);
   } catch (error) {
     console.log(error);
   }
