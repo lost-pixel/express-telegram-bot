@@ -34,7 +34,7 @@ const store = Postgres({
     process.env.NODE_ENV === "production"
       ? {
           ssl: {
-            rejectUnauthorized: true
+            rejectUnauthorized: false
           }
         }
       : undefined
