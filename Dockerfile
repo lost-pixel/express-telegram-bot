@@ -13,6 +13,10 @@ COPY package.json pnpm-lock.yaml ./
 RUN npm install -g pnpm
 RUN npm install -g typescript
 
+# Instal ffmpeg
+
+RUN apt-get update && apt-get install -y ffmpeg
+
 # Install dependencies
 
 RUN pnpm install
