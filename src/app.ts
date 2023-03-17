@@ -533,16 +533,16 @@ bot.on("text", async (ctx) => {
   }
 });
 
-bot.launch(
-  process.env.NODE_ENV === "production"
-    ? {
-        webhook: {
-          domain: env.WEBHOOK_DOMAIN,
-          port: Number(env.WEBHOOK_PORT)
-        }
-      }
-    : undefined
-);
+process.env.NODE_ENV !== "production" && bot.launch();
+
+(async () => {
+  process.env.NODE_ENV === "production" &&
+    app.use(
+      await bot.createWebhook({
+        domain: env.WEBHOOK_DOMAIN
+      })
+    );
+})();
 
 if (!config.isTestEnvironment) {
   app.listen(config.port);
