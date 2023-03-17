@@ -547,6 +547,7 @@ bot.launch(
 if (!config.isTestEnvironment) {
   app.listen(config.port);
   console.info("App is listening on port:", config.port);
+  console.info("Starting bot in webhook mode");
 }
 
 export { app };
