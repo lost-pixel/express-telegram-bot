@@ -5,6 +5,8 @@ import { Telegraf, session, Context, Markup } from "telegraf";
 import { OpenAIApi, Configuration } from "openai";
 import { z } from "zod";
 import { config } from "../config";
+import * as Sentry from "@sentry/node";
+import * as Tracing from "@sentry/tracing";
 
 import { modes } from "./config/modes";
 
@@ -79,6 +81,26 @@ const app = express();
 app.use(cors());
 app.use(helmet());
 app.use(express.json());
+
+Sentry.init({
+  dsn: "https://a80e3c83fef543c09d1a2fbd8d86462b@o1213710.ingest.sentry.io/4504854484615168",
+  integrations: [
+    // enable HTTP calls tracing
+    new Sentry.Integrations.Http({ tracing: true }),
+    // enable Express.js middleware tracing
+    new Tracing.Integrations.Express({ app })
+  ],
+
+  // Set tracesSampleRate to 1.0 to capture 100%
+  // of transactions for performance monitoring.
+  tracesSampleRate: 0.1
+});
+
+// RequestHandler creates a separate execution context using domains, so that every
+// transaction/span/breadcrumb is attached to its own Hub instance
+app.use(Sentry.Handlers.requestHandler());
+// TracingHandler creates a trace for every incoming request
+app.use(Sentry.Handlers.tracingHandler());
 
 app.use((_req: Request, res: Response, next: NextFunction) => {
   res.header("Access-Control-Allow-Origin", "*");

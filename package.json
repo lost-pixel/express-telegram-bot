@@ -33,6 +33,8 @@
   "homepage": "https://github.com/pshaddel/ts-express-prisma-rest#readme",
   "dependencies": {
     "@prisma/client": "^4.11.0",
+    "@sentry/node": "^7.43.0",
+    "@sentry/tracing": "^7.43.0",
     "@telegraf/session": "2.0.0-beta.6",
     "@types/helmet": "^4.0.0",
     "concurrently": "^7.6.0",
