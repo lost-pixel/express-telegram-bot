@@ -61,6 +61,9 @@ interface SessionData {
     role: "system" | "user" | "assistant";
     content: string;
   }[];
+  settings?: {
+    [key: string]: boolean;
+  };
 }
 
 interface MyContext extends Context {
@@ -167,9 +170,47 @@ bot.command("mode", (ctx) => {
   });
 });
 
-const regexp = /mode-switch-event__(.*)/;
+bot.command("settings", (ctx) => {
+  type SettingOption = {
+    name: string;
+    code: string;
+  };
 
-bot.action(regexp, (ctx) => {
+  const settingsOptions: SettingOption[] = [
+    { name: "Be concise ⏩", code: "skipProse" }
+  ];
+  const modeButtons = settingsOptions.map((setting) => {
+    // split into arrays of two
+    return Markup.button.callback(
+      `${ctx.session?.settings?.[setting.code] ? `✅  ` : ""}${setting.name}`,
+      `settings-switch-event__${setting.code}`
+    );
+  });
+
+  const modeButtonsChunks = modeButtons.reduce(
+    (resultArray, item, index) => {
+      const chunkIndex = Math.floor(index / 2);
+
+      if (!resultArray[chunkIndex]) {
+        resultArray[chunkIndex] = []; // start a new chunk
+      }
+
+      resultArray[chunkIndex].push(item);
+
+      return resultArray;
+    },
+    [] as InlineKeyboardButton.CallbackButton[][] // start with the empty array
+  );
+
+  return ctx.reply("Choose your settings!", {
+    parse_mode: "HTML",
+    ...Markup.inlineKeyboard(modeButtonsChunks)
+  });
+});
+
+const modesRegexp = /mode-switch-event__(.*)/;
+
+bot.action(modesRegexp, (ctx) => {
   ctx.telegram.editMessageReplyMarkup(
     ctx.update?.callback_query?.message?.chat.id,
     ctx.update?.callback_query?.message?.message_id,
@@ -215,6 +256,57 @@ bot.action(regexp, (ctx) => {
       modes.find((mode) => mode.code === ctx.match[1])?.name
     }`
   );
+});
+
+const settingsRegexp = /settings-switch-event__(.*)/;
+
+bot.action(settingsRegexp, (ctx) => {
+  ctx.telegram.editMessageReplyMarkup(
+    ctx.update?.callback_query?.message?.chat.id,
+    ctx.update?.callback_query?.message?.message_id,
+    undefined,
+    {
+      //edit initial array, remove tick from previously selected mode add tick to newly selected mode
+
+      inline_keyboard: [
+        // @ts-expect-error I know better what exists here
+        ...(ctx.update?.callback_query?.message?.reply_markup?.inline_keyboard?.map(
+          (row: InlineKeyboardButton.CallbackButton[]) => {
+            console.log(
+              ctx.session?.settings && ctx.session?.settings[ctx.match[1]]
+            );
+            return row.map((button) => {
+              return {
+                ...button,
+                text: button.text.replace(
+                  ctx.session?.settings && ctx.session?.settings[ctx.match[1]]
+                    ? "✅  "
+                    : "",
+                  ctx.session?.settings && ctx.session?.settings[ctx.match[1]]
+                    ? ""
+                    : "✅  "
+                )
+              };
+            });
+          }
+        ) ?? [])
+      ]
+    }
+  );
+
+  if (ctx.session?.settings) {
+    ctx.session.settings[ctx.match[1]] = !ctx.session?.settings?.[ctx.match[1]];
+  } else {
+    ctx.session = {
+      settings: {
+        [ctx.match[1]]: true
+      },
+      messagesCount: 0
+    };
+  }
+
+  console.log(ctx.session);
+  ctx.reply(`Settings updated!`);
 });
 
 bot.on("voice", async (ctx) => {
@@ -377,6 +469,10 @@ bot.on("text", async (ctx) => {
 
     await ctx.sendChatAction("typing");
 
+    const prompt = `${ctx.message.text}. ${
+      ctx.session?.settings?.skipProse ? "Skip prose" : ""
+    }`;
+
     if (!ctx.session.chatHistory) {
       ctx.session.chatHistory = [
         {
@@ -384,10 +480,10 @@ bot.on("text", async (ctx) => {
           content: modes.find((m) => m.code === selectedMode)
             ?.promptStart as string
         },
-        { role: "user", content: ctx.message.text }
+        { role: "user", content: prompt }
       ];
     } else {
-      ctx.session.chatHistory.push({ role: "user", content: ctx.message.text });
+      ctx.session.chatHistory.push({ role: "user", content: prompt });
     }
 
     const completion = await openai.createChatCompletion({
