@@ -27,7 +27,9 @@ const envSchema = z.object({
   PG_USER: z.string().nonempty(),
   PG_PASSWORD: z.string().nonempty(),
   PG_PORT: z.string().nonempty(),
-  PG_DB: z.string().nonempty()
+  PG_DB: z.string().nonempty(),
+  WEBHOOK_DOMAIN: z.string().nonempty(),
+  WEBHOOK_PORT: z.string().nonempty()
 });
 const env = envSchema.parse(process.env);
 
@@ -531,7 +533,16 @@ bot.on("text", async (ctx) => {
   }
 });
 
-bot.launch();
+bot.launch(
+  process.env.NODE_ENV === "production"
+    ? {
+        webhook: {
+          domain: env.WEBHOOK_DOMAIN,
+          port: Number(env.WEBHOOK_PORT)
+        }
+      }
+    : undefined
+);
 
 if (!config.isTestEnvironment) {
   app.listen(config.port);
