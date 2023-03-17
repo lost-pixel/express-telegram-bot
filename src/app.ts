@@ -310,6 +310,7 @@ bot.action(settingsRegexp, (ctx) => {
 });
 
 bot.on("voice", async (ctx) => {
+  ctx.reply("🔊 Processing your voice message...");
   return ctx.telegram
     .getFileLink(ctx.message.voice.file_id)
     .then((url) => {
