@@ -16,6 +16,7 @@ import ffmpeg from "fluent-ffmpeg";
 import { Bot, Context, session, SessionFlavor } from "grammy";
 import { PsqlAdapter } from "@grammyjs/storage-psql";
 import { FileFlavor, hydrateFiles } from "@grammyjs/files";
+import { MenuTemplate, MenuMiddleware } from "grammy-inline-menu";
 import { Client } from "pg";
 
 import * as dotenv from "dotenv"; // see https://github.com/motdotla/dotenv#how-do-i-use-dotenv-with-import
@@ -101,6 +102,41 @@ async function bootstrap() {
 
   await client.connect();
 
+  const settingsMenu = new MenuTemplate<MyContext>("Settings for this chat:");
+
+  settingsMenu.toggle("Short replies", "Short replies", {
+    set(ctx, newState) {
+      console.log({ session: ctx.session, newState });
+      if (ctx.session.settings) {
+        ctx.session.settings.skipProse = newState;
+        return true;
+      } else {
+        ctx.session.settings = {
+          skipProse: newState
+        };
+        return ctx.session.settings.skipProse;
+      }
+    },
+    isSet: (ctx) => !!ctx.session.settings?.skipProse
+  });
+
+  const modeMenu = new MenuTemplate<MyContext>(
+    "Mode of chatting with the bot:"
+  );
+
+  modeMenu.select(
+    "select",
+    modes.map((mode) => mode.name),
+    {
+      async set(ctx, key) {
+        ctx.session.mode = key;
+        await ctx.answerCallbackQuery({ text: `you selected ${key}` });
+        return true;
+      },
+      isSet: (ctx, key) => key === ctx.session.mode
+    }
+  );
+
   const bot = new Bot<MyContext>(env.TELEGRAM_TOKEN);
 
   // Use file plugin to make working with voice messages easier
@@ -112,6 +148,21 @@ async function bootstrap() {
       storage: await PsqlAdapter.create({ tableName: "sessions", client })
     })
   );
+
+  const settingsMenuMiddleware = new MenuMiddleware<MyContext>(
+    "a/",
+    settingsMenu
+  );
+
+  bot.use(settingsMenuMiddleware.middleware());
+
+  const modeMenuMidleware = new MenuMiddleware<MyContext>("b/", modeMenu);
+
+  bot.use(settingsMenuMiddleware.middleware());
+  bot.use(modeMenuMidleware.middleware());
+
+  bot.command("settings", (ctx) => settingsMenuMiddleware.replyToContext(ctx));
+  bot.command("mode", (ctx) => modeMenuMidleware.replyToContext(ctx));
 
   bot.command("start", (ctx) => {
     ctx.reply(
