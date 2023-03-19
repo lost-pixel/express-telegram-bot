@@ -33,6 +33,7 @@
   "homepage": "https://github.com/pshaddel/ts-express-prisma-rest#readme",
   "dependencies": {
     "@grammyjs/files": "^1.0.4",
+    "@grammyjs/ratelimiter": "^1.1.6",
     "@grammyjs/storage-psql": "^2.1.4",
     "@prisma/client": "^4.11.0",
     "@sentry/node": "^7.43.0",

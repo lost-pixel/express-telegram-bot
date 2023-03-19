@@ -4,6 +4,7 @@ specifiers:
   '@commitlint/cli': ^17.4.4
   '@commitlint/config-conventional': ^17.4.4
   '@grammyjs/files': ^1.0.4
+  '@grammyjs/ratelimiter': ^1.1.6
   '@grammyjs/storage-psql': ^2.1.4
   '@prisma/client': ^4.11.0
   '@sentry/node': ^7.43.0
@@ -52,6 +53,7 @@ specifiers:
 
 dependencies:
   '@grammyjs/files': 1.0.4_grammy@1.15.3
+  '@grammyjs/ratelimiter': 1.1.6
   '@grammyjs/storage-psql': 2.1.4
   '@prisma/client': 4.11.0_prisma@4.11.0
   '@sentry/node': 7.43.0
@@ -653,6 +655,10 @@ packages:
       grammy: ^1.3.0
     dependencies:
       grammy: 1.15.3
+    dev: false
+
+  /@grammyjs/ratelimiter/1.1.6:
+    resolution: {integrity: sha512-mqBWTdw9YwbQOhT1st3Car1MqoubafHLWYSb9/5UQUCc9EVqih7JmoBiyXB+vBvI3BMgDU5xoWh2gpeCXxURzw==}
     dev: false
 
   /@grammyjs/storage-psql/2.1.4:

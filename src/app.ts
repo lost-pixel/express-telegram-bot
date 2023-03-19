@@ -4,8 +4,8 @@ import helmet from "helmet";
 import { OpenAIApi, Configuration } from "openai";
 import { z } from "zod";
 import * as Sentry from "@sentry/node";
-import * as Tracing from "@sentry/tracing";
 
+import * as Tracing from "@sentry/tracing";
 import { modes } from "./config/modes";
 
 import path from "path";
@@ -16,6 +16,7 @@ import ffmpeg from "fluent-ffmpeg";
 import { Bot, Context, session, SessionFlavor } from "grammy";
 import { PsqlAdapter } from "@grammyjs/storage-psql";
 import { FileFlavor, hydrateFiles } from "@grammyjs/files";
+import { limit } from "@grammyjs/ratelimiter";
 import { MenuTemplate, MenuMiddleware } from "grammy-inline-menu";
 import { Client } from "pg";
 
@@ -138,6 +139,8 @@ async function bootstrap() {
   );
 
   const bot = new Bot<MyContext>(env.TELEGRAM_TOKEN);
+
+  bot.use(limit());
 
   // Use file plugin to make working with voice messages easier
 
