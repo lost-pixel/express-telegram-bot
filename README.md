@@ -20,4 +20,36 @@
 
 Ed-GPT is a powerful Telegram client that offers advanced features and customization options to enhance your Telegram messaging experience. Built on the GPT-3.5 language model, Ed-GPT offers advanced AI-powered features such as text completion, automatic summarization, and translation capabilities. You can use the serviced version of the bot by providing you Open AI token or self-host it yourself.
 
+## Motivation
+
+We are big fans of ChatGpt & Telegram so we decided to combine them in one single tool, there are also lots of Python ChatGpt bots but not many good examples of ones built in `Node.js` ecosystem with `TypeScript`. All of it written in **350 lines of code**.
+
+
+## Features
+- Blazing fast replies ⚡
+- No limits with your own token 🚀
+- Voice message recognition 🗣️
+- Modes: Assistant 🧑🏼‍💻, Stand-up Comedian 🎤, Conservatory Teacher 🎶, Principal Software Engineer 💻 (Add your own or request new modes by creating new Issue)
+
+## Bot commands
+
+- `/clear` – Clears the current chat and starts from the scratch
+- `/mode` – Select mode of the AI companion
+- `/settings` – Choose additional settings for prompting
+- `/token` – Add your Open AI token
+
+## Running Ed-Gpt
+
+You can use the bot deployed by us or self-host it at your convenience.
+
+### Setup (Managed)
+1. Get [OpenAI API](https://openai.com/api/) key
+2. Run `/token sk-xxxx-xxxx-xxxx` (with your token) to add it to the telegram
+
+### Setup (Self-hosted)
+
+1. Build Docker image
+2. Create a postgres database for session storage (persistence of bot settings between bot redeployments and crashes)
+3. Provide all necessary env vars
+4. Deploy the project on the platform of choice via running Docker image
 
