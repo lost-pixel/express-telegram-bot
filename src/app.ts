@@ -13,57 +13,15 @@ import os from "os";
 import fs from "fs";
 import ffmpeg from "fluent-ffmpeg";
 
-import { Bot, Context, session, SessionFlavor } from "grammy";
+import { Bot, session } from "grammy";
 import { PsqlAdapter } from "@grammyjs/storage-psql";
-import { FileFlavor, hydrateFiles } from "@grammyjs/files";
+import { hydrateFiles } from "@grammyjs/files";
 import { limit } from "@grammyjs/ratelimiter";
 import { MenuTemplate, MenuMiddleware } from "grammy-inline-menu";
-import { Client } from "pg";
 
-import * as dotenv from "dotenv"; // see https://github.com/motdotla/dotenv#how-do-i-use-dotenv-with-import
-
-dotenv.config();
-
-const COMPLETION_PARAMS = {
-  frequency_penalty: 0,
-  presence_penalty: 0,
-  temperature: 0.6,
-  max_tokens: 1000,
-  top_p: 1
-};
-
-type ChatHistoryItem = {
-  role: "system" | "user" | "assistant";
-  content: string;
-};
-
-type SessionData = {
-  mode?: string;
-  token?: string;
-  messagesCount: number;
-  chatHistory?: ChatHistoryItem[];
-  settings?: {
-    [key: string]: boolean;
-  };
-};
-
-type MyContext = FileFlavor<Context> & SessionFlavor<SessionData>;
-
-const envSchema = z.object({
-  TELEGRAM_TOKEN: z.string().nonempty(),
-  OPEN_AI_PLATFORM_TOKEN: z.string().nonempty(),
-  NO_OAI_TOKEN_MESSAGE_LIMIT: z.string().nonempty(),
-  PG_HOST: z.string().nonempty(),
-  PG_USER: z.string().nonempty(),
-  PG_PASSWORD: z.string().nonempty(),
-  PG_PORT: z.string().nonempty(),
-  PG_DB: z.string().nonempty(),
-  WEBHOOK_DOMAIN: z.string().nonempty(),
-  WEBHOOK_PORT: z.string().nonempty()
-});
-const env = envSchema.parse(process.env);
-
-const initialMode = "ASSISTANT";
+import { MyContext, ChatHistoryItem } from "./types";
+import { COMPLETION_PARAMS, client, initialSession } from "./utils";
+import { env } from "./utils";
 
 const app = express();
 
@@ -93,14 +51,6 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
 });
 
 async function bootstrap() {
-  const client = new Client({
-    user: env.PG_USER,
-    host: env.PG_HOST,
-    database: env.PG_DB,
-    password: env.PG_PASSWORD,
-    port: Number(env.PG_PORT)
-  });
-
   await client.connect();
 
   const settingsMenu = new MenuTemplate<MyContext>("Settings for this chat:");
@@ -133,7 +83,8 @@ async function bootstrap() {
         await ctx.reply(`You are chatting with ${key}`);
         return true;
       },
-      isSet: (ctx, key) => key === ctx.session.mode
+      isSet: (ctx, key) => key === ctx.session.mode,
+      columns: 2
     }
   );
 
@@ -141,26 +92,11 @@ async function bootstrap() {
 
   bot.use(limit());
 
-  // Use file plugin to make working with voice messages easier
-
   bot.api.config.use(hydrateFiles(bot.token));
 
   bot.use(
     session({
-      initial: () => ({
-        mode: initialMode,
-        messagesCount: 0,
-        chatHistory: [
-          {
-            role: "system",
-            content: modes.find((m) => m.code === "ASSISTANT")
-              ?.promptStart as string
-          }
-        ],
-        settings: {
-          skipProse: false
-        }
-      }),
+      initial: () => initialSession,
       storage: await PsqlAdapter.create({ tableName: "sessions", client })
     })
   );
@@ -321,11 +257,23 @@ const getPrompt = (ctx: MyContext) => {
 };
 
 const replyWithChatCompletion = async (ctx: MyContext, completion: string) => {
+  const parseMode = modes.find((m) => m.name === ctx.session.mode)?.parseMode;
+
+  let parsedMessage;
+
+  if (parseMode === "MarkdownV2") {
+    parsedMessage = completion.replace(
+      /(\[[^\][]*]\(http[^()]*\))|[_*[\]()~>#+=|{}.!-]/gi,
+      (x, y) => (y ? y : "\\" + x)
+    );
+  } else {
+    parsedMessage = completion;
+  }
+
   await ctx.replyWithChatAction("typing");
-  await ctx.reply(completion, {
-    parse_mode: modes.find((m) => m.name === ctx.session.mode)?.parseMode as
-      | "HTML"
-      | "MarkdownV2"
+
+  await ctx.reply(parsedMessage, {
+    parse_mode: parseMode as "HTML" | "MarkdownV2"
   });
 };
 
