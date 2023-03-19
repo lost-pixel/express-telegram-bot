@@ -32,6 +32,8 @@
   },
   "homepage": "https://github.com/pshaddel/ts-express-prisma-rest#readme",
   "dependencies": {
+    "@grammyjs/files": "^1.0.4",
+    "@grammyjs/storage-psql": "^2.1.4",
     "@prisma/client": "^4.11.0",
     "@sentry/node": "^7.43.0",
     "@sentry/tracing": "^7.43.0",
@@ -42,6 +44,8 @@
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
     "fluent-ffmpeg": "^2.1.2",
+    "grammy": "^1.15.3",
+    "grammy-inline-menu": "^8.0.0",
     "helmet": "^6.0.1",
     "kysely": "^0.23.5",
     "openai": "^3.2.1",
