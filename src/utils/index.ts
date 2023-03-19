@@ -33,7 +33,12 @@ export const client = new Client({
   host: env.PG_HOST,
   database: env.PG_DB,
   password: env.PG_PASSWORD,
-  port: Number(env.PG_PORT)
+  port: Number(env.PG_PORT),
+  //add ssl related param
+
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
 
 const initialMode = "ASSISTANT";
