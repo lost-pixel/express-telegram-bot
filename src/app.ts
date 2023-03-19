@@ -63,7 +63,7 @@ const envSchema = z.object({
 });
 const env = envSchema.parse(process.env);
 
-const selectedMode = "ASSISTANT";
+const initialMode = "ASSISTANT";
 
 const app = express();
 
@@ -107,7 +107,6 @@ async function bootstrap() {
 
   settingsMenu.toggle("Short replies", "Short replies", {
     set(ctx, newState) {
-      console.log({ session: ctx.session, newState });
       if (ctx.session.settings) {
         ctx.session.settings.skipProse = newState;
         return true;
@@ -131,7 +130,7 @@ async function bootstrap() {
     {
       async set(ctx, key) {
         ctx.session.mode = key;
-        await ctx.answerCallbackQuery({ text: `you selected ${key}` });
+        await ctx.reply(`You are chatting with ${key}`);
         return true;
       },
       isSet: (ctx, key) => key === ctx.session.mode
@@ -148,21 +147,42 @@ async function bootstrap() {
 
   bot.use(
     session({
+      initial: () => ({
+        mode: initialMode,
+        messagesCount: 0,
+        chatHistory: [
+          {
+            role: "system",
+            content: modes.find((m) => m.code === "ASSISTANT")
+              ?.promptStart as string
+          }
+        ],
+        settings: {
+          skipProse: false
+        }
+      }),
       storage: await PsqlAdapter.create({ tableName: "sessions", client })
     })
   );
 
   const settingsMenuMiddleware = new MenuMiddleware<MyContext>(
-    "a/",
+    "settings-menu/",
     settingsMenu
   );
 
   bot.use(settingsMenuMiddleware.middleware());
 
-  const modeMenuMidleware = new MenuMiddleware<MyContext>("b/", modeMenu);
+  const modeMenuMidleware = new MenuMiddleware<MyContext>(
+    "modes-menu/",
+    modeMenu
+  );
 
   bot.use(settingsMenuMiddleware.middleware());
   bot.use(modeMenuMidleware.middleware());
+
+  bot.command("debug", (ctx) => {
+    ctx.reply(JSON.stringify(ctx.session, null, 2));
+  });
 
   bot.command("settings", (ctx) => settingsMenuMiddleware.replyToContext(ctx));
   bot.command("mode", (ctx) => modeMenuMidleware.replyToContext(ctx));
@@ -178,7 +198,13 @@ async function bootstrap() {
 
   bot.command("clear", (ctx) => {
     if (ctx.session) {
-      ctx.session.chatHistory = undefined;
+      ctx.session.chatHistory = [
+        {
+          role: "system",
+          content: modes.find((m) => m.name === ctx.session.mode)
+            ?.promptStart as string
+        }
+      ];
 
       const randomStartFromScratchMessages = [
         "Let's start from the scratch! How can I help?",
@@ -240,7 +266,7 @@ const getChatHistory = (ctx: MyContext, content: string): ChatHistoryItem[] => {
     ctx.session.chatHistory = [
       {
         role: "system",
-        content: modes.find((m) => m.code === selectedMode)
+        content: modes.find((m) => m.name === ctx.session.mode)
           ?.promptStart as string
       },
       { role: "user", content }
@@ -256,35 +282,40 @@ const getChatHistory = (ctx: MyContext, content: string): ChatHistoryItem[] => {
 };
 
 const getChatCompletion = async (ctx: MyContext, prompt: string) => {
-  const configuration = new Configuration({
-    apiKey: ctx?.session?.token ?? env.OPEN_AI_PLATFORM_TOKEN
-  });
+  try {
+    const configuration = new Configuration({
+      apiKey: ctx?.session?.token ?? env.OPEN_AI_PLATFORM_TOKEN
+    });
 
-  const openai = new OpenAIApi(configuration);
+    const openai = new OpenAIApi(configuration);
 
-  await ctx.replyWithChatAction("typing");
+    await ctx.replyWithChatAction("typing");
 
-  const chatHistory = getChatHistory(ctx, prompt);
+    const chatHistory = getChatHistory(ctx, prompt);
 
-  const completion = await openai.createChatCompletion({
-    model: "gpt-3.5-turbo",
-    messages: chatHistory,
-    ...COMPLETION_PARAMS
-  });
+    const completion = await openai.createChatCompletion({
+      model: "gpt-3.5-turbo",
+      messages: chatHistory,
+      ...COMPLETION_PARAMS
+    });
 
-  ctx.session.messagesCount = ctx.session.messagesCount + 1;
+    ctx.session.messagesCount = ctx.session.messagesCount + 1;
 
-  if (completion.data.choices[0].message) {
-    ctx.session.chatHistory?.push(completion.data.choices[0].message);
+    if (completion.data.choices[0].message) {
+      ctx.session.chatHistory?.push(completion.data.choices[0].message);
+    }
+
+    return completion.data.choices[0].message;
+  } catch (error: unknown) {
+    //@ts-expect-error - error is not a string
+    console.log(error.response?.data);
   }
-
-  return completion.data.choices[0].message;
 };
 
 const getPrompt = (ctx: MyContext) => {
   const prompt = `${ctx.message?.text}. ${
     ctx.session?.settings?.skipProse ? "Skip prose." : ""
-  }`;
+  } Answer as: ${ctx.session?.mode}. Don't mention the mode in your answer.`;
 
   return prompt;
 };
@@ -292,7 +323,7 @@ const getPrompt = (ctx: MyContext) => {
 const replyWithChatCompletion = async (ctx: MyContext, completion: string) => {
   await ctx.replyWithChatAction("typing");
   await ctx.reply(completion, {
-    parse_mode: modes.find((m) => m.code === selectedMode)?.parseMode as
+    parse_mode: modes.find((m) => m.name === ctx.session.mode)?.parseMode as
       | "HTML"
       | "MarkdownV2"
   });
