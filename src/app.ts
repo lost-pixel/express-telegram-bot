@@ -22,6 +22,7 @@ import { MenuTemplate, MenuMiddleware } from "grammy-inline-menu";
 import { MyContext, ChatHistoryItem } from "./types";
 import { COMPLETION_PARAMS, client, initialSession } from "./utils";
 import { env } from "./utils";
+import { config } from "../config";
 
 const app = express();
 
@@ -347,5 +348,11 @@ const handleVoiceMessage = async (ctx: MyContext) => {
     console.log(error);
   }
 };
+
+if (!config.isTestEnvironment) {
+  app.listen(config.port);
+  console.info("App is listening on port:", config.port);
+  console.info("Starting bot in long-polling mode");
+}
 
 export { app };

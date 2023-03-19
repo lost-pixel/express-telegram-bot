@@ -49,7 +49,7 @@ export const initialSession = {
   chatHistory: [
     {
       role: "system",
-      content: modes.find((m) => m.code === "ASSISTANT")?.promptStart as string
+      content: modes.find((m) => m.code === initialMode)?.promptStart as string
     }
   ],
   settings: {
