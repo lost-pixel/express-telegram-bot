@@ -137,8 +137,9 @@ async function bootstrap() {
       ctx.session.chatHistory = [
         {
           role: "system",
-          content: modes.find((m) => m.name === ctx.session.mode)
-            ?.promptStart as string
+          content: modes.find(
+            (m) => m.name === ctx.session.mode || m.code === ctx.session.mode
+          )?.promptStart as string
         }
       ];
 
