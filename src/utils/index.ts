@@ -15,7 +15,8 @@ export const envSchema = z.object({
   PG_PORT: z.string().nonempty(),
   PG_DB: z.string().nonempty(),
   WEBHOOK_DOMAIN: z.string().nonempty(),
-  WEBHOOK_PORT: z.string().nonempty()
+  WEBHOOK_PORT: z.string().nonempty(),
+  SENTRY_DSN: z.string().nonempty()
 });
 
 export const env = envSchema.parse(process.env);

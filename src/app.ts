@@ -31,7 +31,7 @@ app.use(helmet());
 app.use(express.json());
 
 Sentry.init({
-  dsn: "https://a80e3c83fef543c09d1a2fbd8d86462b@o1213710.ingest.sentry.io/4504854484615168",
+  dsn: env.SENTRY_DSN,
   integrations: [
     new Sentry.Integrations.Http({ tracing: true }),
     new Tracing.Integrations.Express({ app })
